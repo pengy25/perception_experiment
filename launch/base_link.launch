@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="tf" type="static_transform_publisher" name="published_base_link"
+    args="0.0 0.0 0.0 0.0 0.0 0.0 /map /base_link 100" />
+</launch>
