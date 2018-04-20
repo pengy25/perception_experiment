@@ -13,6 +13,43 @@
 #include "tf/transform_listener.h"
 #include "tf_conversions/tf_eigen.h"
 
+namespace {
+void SetupROSParams() {
+  if (!ros::param::has("crop_min_x")) {
+    ros::param::set("crop_min_x", 0.0);
+  }
+  if (!ros::param::has("crop_min_y")) {
+    ros::param::set("crop_min_y", -0.5);
+  }
+  if (!ros::param::has("crop_min_z")) {
+    ros::param::set("crop_min_z", 0.05);
+  }
+  if (!ros::param::has("crop_max_x")) {
+    ros::param::set("crop_max_x", 1.3);
+  }
+  if (!ros::param::has("crop_max_y")) {
+    ros::param::set("crop_max_y", 0.5);
+  }
+  if (!ros::param::has("crop_max_z")) {
+    ros::param::set("crop_max_z", 2.0);
+  }
+  if (!ros::param::has("angle_tolerance_degree")) {
+    ros::param::set("angle_tolerance_degree", 10.0);
+  }
+  if (!ros::param::has("max_point_distance")) {
+    ros::param::set("max_point_distance", 0.015);
+  }
+  if (!ros::param::has("surface_point_threshold")) {
+    ros::param::set("surface_point_threshold", 5000);
+  }
+  if (!ros::param::has("min_iteration")) {
+    ros::param::set("min_iteration", 1000);
+  }
+
+  return;
+}
+}  // Anonymous namespace
+
 class Experiment {
  public:
   Experiment(const std::string& target_frame, const ros::Publisher& input_pub,
@@ -62,6 +99,8 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
 
   pcl::CropBox<PointC> crop;
   crop.setInputCloud(pcl_cloud);
+
+  SetupROSParams();
 
   double max_x, max_y, max_z, min_x, min_y, min_z;
   ros::param::param("crop_min_x", min_x, 0.0);
