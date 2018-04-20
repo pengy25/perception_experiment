@@ -5,35 +5,32 @@
 #include "pcl/common/common.h"
 #include "pcl/filters/crop_box.h"
 #include "pcl_conversions/pcl_conversions.h"
+#include "pcl/filters/extract_indices.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "surface_perception/segmentation.h"
-#include "surface_perception/surface_objects.h"
+#include "surface_perception/surface_finder.h"
 #include "surface_perception/typedefs.h"
-#include "surface_perception/visualization.h"
 #include "tf/transform_listener.h"
 #include "tf_conversions/tf_eigen.h"
 
-using surface_perception::SurfaceObjects;
-using surface_perception::SurfaceViz;
-
 class Experiment {
  public:
-  Experiment(const SurfaceViz& viz, const std::string& target_frame,
-             const ros::Publisher& input_pub);
+  Experiment(const std::string& target_frame, const ros::Publisher& input_pub,
+             const ros::Publisher& output_pub);
   void Callback(const sensor_msgs::PointCloud2ConstPtr& cloud);
 
  private:
-  SurfaceViz viz_;
   ros::Publisher input_pub_;
+  ros::Publisher output_pub_;
   std::string target_frame_;
   tf::TransformListener tf_listener_;
 };
 
-Experiment::Experiment(const SurfaceViz& viz, const std::string& target_frame,
-                       const ros::Publisher& input_pub)
-    : viz_(viz),
-      input_pub_(input_pub),
+Experiment::Experiment(const std::string& target_frame,
+                       const ros::Publisher& input_pub,
+                       const ros::Publisher& output_pub)
+    : input_pub_(input_pub),
+      output_pub_(output_pub),
       target_frame_(target_frame),
       tf_listener_() {}
 
@@ -86,73 +83,66 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   pcl::toROSMsg(*cropped_cloud, msg_out);
   input_pub_.publish(msg_out);
 
-  double horizontal_tolerance_degrees;
-  ros::param::param("horizontal_tolerance_degrees",
-                    horizontal_tolerance_degrees, 10.0);
-  double margin_above_surface;
-  ros::param::param("margin_above_surface", margin_above_surface, 0.025);
+  double angle_tolerance_degree;
+  ros::param::param("angle_tolerance_degree", angle_tolerance_degree, 10.0);
   double max_point_distance;
   ros::param::param("max_point_distance", max_point_distance, 0.015);
-  double cluster_distance;
-  ros::param::param("cluster_distance", cluster_distance, 0.01);
-  int min_cluster_size;
-  ros::param::param("min_cluster_size", min_cluster_size, 100);
-  int max_cluster_size;
-  ros::param::param("max_cluster_size", max_cluster_size, 5000);
-  int min_surface_size;
-  ros::param::param("min_surface_size", min_surface_size, 5000);
-  int min_surface_exploration_iteration;
-  ros::param::param("min_surface_exploration_iteration",
-                    min_surface_exploration_iteration, 1000);
+  int surface_point_threshold;
+  ros::param::param("surface_point_threshold", surface_point_threshold, 5000);
+  int min_iteration;
+  ros::param::param("min_iteration", min_iteration, 1000);
 
-  surface_perception::Segmentation seg;
-  seg.set_input_cloud(pcl_cloud);
-  seg.set_indices(point_indices);
-  seg.set_horizontal_tolerance_degrees(horizontal_tolerance_degrees);
-  seg.set_margin_above_surface(margin_above_surface);
-  seg.set_max_point_distance(max_point_distance);
-  seg.set_cluster_distance(cluster_distance);
-  seg.set_min_cluster_size(min_cluster_size);
-  seg.set_max_cluster_size(max_cluster_size);
-  seg.set_min_surface_size(min_surface_size);
-  seg.set_min_surface_exploration_iteration(min_surface_exploration_iteration);
+  surface_perception::SurfaceFinder finder;
+  finder.set_cloud(pcl_cloud);
+  finder.set_cloud_indices(point_indices);
+  finder.set_angle_tolerance_degree(angle_tolerance_degree);
+  finder.set_surface_point_threshold(surface_point_threshold);
+  finder.set_max_point_distance(max_point_distance);
+  finder.set_min_iteration(min_iteration);
 
-  std::vector<SurfaceObjects> surface_objects;
-  bool success = seg.Segment(&surface_objects);
+  std::vector<pcl::PointIndices::Ptr> indices_vec;
+  std::vector<pcl::ModelCoefficients> coeff_vec;
+  finder.ExploreSurfaces(&indices_vec, &coeff_vec);
 
-  if (!success || surface_objects.size() == 0) {
-    ROS_ERROR("Failed to segment scene!");
+  if (indices_vec.size() == 0) {
+    ROS_ERROR("Failed to find surfaces!");
   } else {
-    size_t object_count = 0;
-    for (size_t i = 0; i < surface_objects.size(); i++) {
-      object_count += surface_objects[i].objects.size();
-    }
-    ROS_INFO("Found %ld surfaces with %ld objects using %d iterations",
-             surface_objects.size(), object_count,
-             min_surface_exploration_iteration);
-  }
+    PointCloudC::Ptr output_cloud(new PointCloudC);
+    output_cloud->header.frame_id = target_frame_;
 
-  viz_.Hide();
-  viz_.set_surface_objects(surface_objects);
-  viz_.Show();
+    for(size_t i = 0; i < indices_vec.size(); i++) {
+      PointCloudC::Ptr part_cloud(new PointCloudC);
+      pcl::ExtractIndices<PointC> extract_indices;
+      extract_indices.setInputCloud(pcl_cloud);
+      extract_indices.setIndices(indices_vec[i]);
+      extract_indices.filter(*part_cloud);
+
+      *output_cloud += *part_cloud;
+    }
+
+    ROS_INFO("Found %ld surfaces using %d iterations",
+             indices_vec.size(),
+             min_iteration);
+
+    pcl::toROSMsg(*output_cloud, msg_out);
+    output_pub_.publish(msg_out);
+  }
 }
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "surface_perception_experiment");
   ros::NodeHandle nh;
-
-  ros::Publisher marker_pub =
-      nh.advertise<visualization_msgs::Marker>("surface_objects", 100);
-  ros::Publisher cropped_input_pub = nh.advertise<sensor_msgs::PointCloud2>(
-      "experiment_cropped_input_cloud", 1, true);
+  ros::Publisher input_pub =
+      nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 100, true);
+  ros::Publisher output_pub =
+      nh.advertise<sensor_msgs::PointCloud2>("detected_surface", 100, true);
 
   std::string target_frame("base_link");
   if (argc > 1) {
     target_frame = argv[1];
   }
 
-  SurfaceViz viz(marker_pub);
-  Experiment experiment(viz, target_frame, cropped_input_pub);
+  Experiment experiment(target_frame, input_pub, output_pub);
   ros::Subscriber pc_sub = nh.subscribe<sensor_msgs::PointCloud2>(
       "cloud_in", 1, &Experiment::Callback, &experiment);
   ros::spin();
