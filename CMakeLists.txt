@@ -8,14 +8,19 @@ project(perception_experiment)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  cmake_modules
   roscpp
   rospy
   surface_perception
+  tf
+  tf_conversions
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(Eigen REQUIRED)
+find_package(PCL REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -103,10 +108,15 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES perception_experiment
-#  CATKIN_DEPENDS roscpp rospy
-#  DEPENDS system_lib
+  INCLUDE_DIRS include
+  LIBRARIES perception_experiment
+  CATKIN_DEPENDS
+    eigen_conversions
+    roscpp
+    rospy
+  DEPENDS
+    Eigen
+    PCL
 )
 
 ###########
@@ -116,8 +126,10 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${Eigen_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -149,6 +161,12 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+add_executable(perception_experiment_multisurface src/multisurface_main.cpp)
+set_target_properties(perception_experiment_multisurface PROPERTIES OUTPUT_NAME multisurface PREFIX "")
+target_link_libraries(perception_experiment_multisurface
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
