@@ -159,8 +159,6 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   finder.set_max_point_distance(max_point_distance);
   finder.set_min_iteration(min_iteration);
 
-
-
   while (iterations_ran_ < iteration_limit_ && ros::ok()) {
     iterations_ran_++;
     std::vector<pcl::PointIndices::Ptr> indices_vec;
@@ -184,8 +182,8 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
         *output_cloud += *part_cloud;
       }
 
-      ROS_INFO("Found %ld surfaces using %d iterations at %ldth attempt", indices_vec.size(),
-               min_iteration, iterations_ran_);
+      ROS_INFO("Found %ld surfaces using %d iterations at %ldth attempt",
+               indices_vec.size(), min_iteration, iterations_ran_);
 
       pcl::toROSMsg(*output_cloud, msg_out);
       output_pub_.publish(msg_out);
