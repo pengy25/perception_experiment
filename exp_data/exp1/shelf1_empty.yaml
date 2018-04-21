@@ -6,4 +6,5 @@
 /crop_min_y: -0.5
 /crop_min_z: 0.05
 /max_point_distance: 0.015
-/min_iteration: 50
+/min_iteration: 20
+/surface_point_threshold: 5000

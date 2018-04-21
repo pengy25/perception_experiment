@@ -4,8 +4,8 @@
 #include "Eigen/Eigen"
 #include "pcl/common/common.h"
 #include "pcl/filters/crop_box.h"
-#include "pcl_conversions/pcl_conversions.h"
 #include "pcl/filters/extract_indices.h"
+#include "pcl_conversions/pcl_conversions.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "surface_perception/surface_finder.h"
@@ -55,12 +55,18 @@ class Experiment {
   Experiment(const std::string& target_frame, const ros::Publisher& input_pub,
              const ros::Publisher& output_pub);
   void Callback(const sensor_msgs::PointCloud2ConstPtr& cloud);
+  bool get_is_done();
+  double get_failure_rate();
 
  private:
   ros::Publisher input_pub_;
   ros::Publisher output_pub_;
   std::string target_frame_;
   tf::TransformListener tf_listener_;
+  size_t iterations_ran_;
+  size_t failure_times_;
+  size_t iteration_limit_;
+  bool is_done_;
 };
 
 Experiment::Experiment(const std::string& target_frame,
@@ -69,7 +75,21 @@ Experiment::Experiment(const std::string& target_frame,
     : input_pub_(input_pub),
       output_pub_(output_pub),
       target_frame_(target_frame),
-      tf_listener_() {}
+      tf_listener_(),
+      iteration_limit_(1000),
+      iterations_ran_(0),
+      failure_times_(0),
+      is_done_(false) {}
+
+bool Experiment::get_is_done() { return is_done_; }
+
+double Experiment::get_failure_rate() {
+  if (!is_done_) {
+    ROS_WARN("Warning: the experiment is not done yet.");
+    return 0.0;
+  }
+  return 1.0 * failure_times_ / iterations_ran_;
+}
 
 void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   PointCloudC::Ptr pcl_cloud_raw(new PointCloudC);
@@ -139,33 +159,39 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   finder.set_max_point_distance(max_point_distance);
   finder.set_min_iteration(min_iteration);
 
-  std::vector<pcl::PointIndices::Ptr> indices_vec;
-  std::vector<pcl::ModelCoefficients> coeff_vec;
-  finder.ExploreSurfaces(&indices_vec, &coeff_vec);
 
-  if (indices_vec.size() == 0) {
-    ROS_ERROR("Failed to find surfaces!");
-  } else {
-    PointCloudC::Ptr output_cloud(new PointCloudC);
-    output_cloud->header.frame_id = target_frame_;
 
-    for(size_t i = 0; i < indices_vec.size(); i++) {
-      PointCloudC::Ptr part_cloud(new PointCloudC);
-      pcl::ExtractIndices<PointC> extract_indices;
-      extract_indices.setInputCloud(pcl_cloud);
-      extract_indices.setIndices(indices_vec[i]);
-      extract_indices.filter(*part_cloud);
+  while (iterations_ran_ < iteration_limit_ && ros::ok()) {
+    iterations_ran_++;
+    std::vector<pcl::PointIndices::Ptr> indices_vec;
+    std::vector<pcl::ModelCoefficients> coeff_vec;
+    finder.ExploreSurfaces(&indices_vec, &coeff_vec);
 
-      *output_cloud += *part_cloud;
+    if (indices_vec.size() < 3) {
+      ROS_ERROR("Failed to find surfaces!");
+      failure_times_++;
+    } else {
+      PointCloudC::Ptr output_cloud(new PointCloudC);
+      output_cloud->header.frame_id = target_frame_;
+
+      for (size_t i = 0; i < indices_vec.size(); i++) {
+        PointCloudC::Ptr part_cloud(new PointCloudC);
+        pcl::ExtractIndices<PointC> extract_indices;
+        extract_indices.setInputCloud(pcl_cloud);
+        extract_indices.setIndices(indices_vec[i]);
+        extract_indices.filter(*part_cloud);
+
+        *output_cloud += *part_cloud;
+      }
+
+      ROS_INFO("Found %ld surfaces using %d iterations at %ldth attempt", indices_vec.size(),
+               min_iteration, iterations_ran_);
+
+      pcl::toROSMsg(*output_cloud, msg_out);
+      output_pub_.publish(msg_out);
     }
-
-    ROS_INFO("Found %ld surfaces using %d iterations",
-             indices_vec.size(),
-             min_iteration);
-
-    pcl::toROSMsg(*output_cloud, msg_out);
-    output_pub_.publish(msg_out);
   }
+  is_done_ = true;
 }
 
 int main(int argc, char** argv) {
@@ -184,5 +210,10 @@ int main(int argc, char** argv) {
   Experiment experiment(target_frame, input_pub, output_pub);
   ros::Subscriber pc_sub = nh.subscribe<sensor_msgs::PointCloud2>(
       "cloud_in", 1, &Experiment::Callback, &experiment);
-  ros::spin();
+
+  while (!experiment.get_is_done() && ros::ok()) {
+    ros::spinOnce();
+  }
+  ROS_INFO("The test finishes with the failure rate of %f",
+           experiment.get_failure_rate());
 }
