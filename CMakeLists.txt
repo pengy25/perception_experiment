@@ -174,6 +174,12 @@ target_link_libraries(perception_experiment_sac_segmentation
   ${catkin_LIBRARIES}
 )
 
+add_executable(perception_experiment_omps src/omps_main.cpp)
+set_target_properties(perception_experiment_omps PROPERTIES OUTPUT_NAME omps PREFIX "")
+target_link_libraries(perception_experiment_omps
+  ${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
