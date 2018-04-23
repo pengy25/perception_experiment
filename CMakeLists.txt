@@ -162,15 +162,15 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(perception_experiment_multisurface src/multisurface_main.cpp)
-set_target_properties(perception_experiment_multisurface PROPERTIES OUTPUT_NAME multisurface PREFIX "")
-target_link_libraries(perception_experiment_multisurface
+add_executable(perception_experiment_new_algorithm src/new_algorithm_main.cpp)
+set_target_properties(perception_experiment_new_algorithm PROPERTIES OUTPUT_NAME new_algorithm PREFIX "")
+target_link_libraries(perception_experiment_new_algorithm
   ${catkin_LIBRARIES}
 )
 
-add_executable(perception_experiment_single_surface src/single_surface_main.cpp)
-set_target_properties(perception_experiment_single_surface PROPERTIES OUTPUT_NAME single_surface PREFIX "")
-target_link_libraries(perception_experiment_single_surface
+add_executable(perception_experiment_sac_segmentation src/sac_segmentation_main.cpp)
+set_target_properties(perception_experiment_sac_segmentation PROPERTIES OUTPUT_NAME sac_segmentation PREFIX "")
+target_link_libraries(perception_experiment_sac_segmentation
   ${catkin_LIBRARIES}
 )
 
