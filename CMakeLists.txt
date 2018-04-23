@@ -168,6 +168,12 @@ target_link_libraries(perception_experiment_multisurface
   ${catkin_LIBRARIES}
 )
 
+add_executable(perception_experiment_single_surface src/single_surface_main.cpp)
+set_target_properties(perception_experiment_single_surface PROPERTIES OUTPUT_NAME single_surface PREFIX "")
+target_link_libraries(perception_experiment_single_surface
+  ${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############

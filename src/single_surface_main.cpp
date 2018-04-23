@@ -8,10 +8,13 @@
 #include "pcl_conversions/pcl_conversions.h"
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "surface_perception/surface_finder.h"
 #include "surface_perception/typedefs.h"
 #include "tf/transform_listener.h"
 #include "tf_conversions/tf_eigen.h"
+
+#include "pcl/sample_consensus/method_types.h"
+#include "pcl/sample_consensus/model_types.h"
+#include "pcl/segmentation/sac_segmentation.h"
 
 namespace {
 void SetupROSParams() {
@@ -33,17 +36,8 @@ void SetupROSParams() {
   if (!ros::param::has("crop_max_z")) {
     ros::param::set("crop_max_z", 2.0);
   }
-  if (!ros::param::has("angle_tolerance_degree")) {
-    ros::param::set("angle_tolerance_degree", 10.0);
-  }
   if (!ros::param::has("max_point_distance")) {
     ros::param::set("max_point_distance", 0.015);
-  }
-  if (!ros::param::has("surface_point_threshold")) {
-    ros::param::set("surface_point_threshold", 5000);
-  }
-  if (!ros::param::has("min_iteration")) {
-    ros::param::set("min_iteration", 1000);
   }
 
   return;
@@ -142,41 +136,35 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   pcl::toROSMsg(*cropped_cloud, msg_out);
   input_pub_.publish(msg_out);
 
-  double angle_tolerance_degree;
-  ros::param::param("angle_tolerance_degree", angle_tolerance_degree, 10.0);
   double max_point_distance;
   ros::param::param("max_point_distance", max_point_distance, 0.015);
-  int surface_point_threshold;
-  ros::param::param("surface_point_threshold", surface_point_threshold, 5000);
-  int min_iteration;
-  ros::param::param("min_iteration", min_iteration, 1000);
-
+  pcl::SACSegmentation<PointC> seg;
+  seg.setInputCloud(pcl_cloud);
+  seg.setIndices(point_indices);
+  seg.setModelType(pcl::SACMODEL_PLANE);
+  seg.setMethodType(pcl::SAC_RANSAC);
+  seg.setDistanceThreshold(max_point_distance);
 
   while (iterations_ran_ < iteration_limit_ && ros::ok()) {
     iterations_ran_++;
-    std::vector<pcl::PointIndices::Ptr> indices_vec;
-    std::vector<pcl::ModelCoefficients> coeff_vec;
-    finder.ExploreSurfaces(&indices_vec, &coeff_vec);
 
-    if (indices_vec.size() < 3) {
+    pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients);
+    pcl::PointIndices::Ptr indices(new pcl::PointIndices);
+    seg.segment(*indices, *coeff);
+
+    if (indices->indices.size() == 0) {
       ROS_ERROR("Failed to find surfaces!");
       failure_times_++;
     } else {
       PointCloudC::Ptr output_cloud(new PointCloudC);
       output_cloud->header.frame_id = target_frame_;
 
-      for (size_t i = 0; i < indices_vec.size(); i++) {
-        PointCloudC::Ptr part_cloud(new PointCloudC);
-        pcl::ExtractIndices<PointC> extract_indices;
-        extract_indices.setInputCloud(pcl_cloud);
-        extract_indices.setIndices(indices_vec[i]);
-        extract_indices.filter(*part_cloud);
+      pcl::ExtractIndices<PointC> extract_indices;
+      extract_indices.setInputCloud(pcl_cloud);
+      extract_indices.setIndices(indices);
+      extract_indices.filter(*output_cloud);
 
-        *output_cloud += *part_cloud;
-      }
-
-      ROS_INFO("Found %ld surfaces using %d iterations at %ldth attempt",
-               indices_vec.size(), min_iteration, iterations_ran_);
+      ROS_INFO("Found 1 surface using at %ldth attempt", iterations_ran_);
 
       pcl::toROSMsg(*output_cloud, msg_out);
       output_pub_.publish(msg_out);
