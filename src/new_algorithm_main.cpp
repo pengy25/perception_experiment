@@ -159,11 +159,18 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   finder.set_max_point_distance(max_point_distance);
   finder.set_min_iteration(min_iteration);
 
+  ros::WallDuration total_time = ros::WallDuration();
   while (iterations_ran_ < iteration_limit_ && ros::ok()) {
     iterations_ran_++;
     std::vector<pcl::PointIndices::Ptr> indices_vec;
     std::vector<pcl::ModelCoefficients> coeff_vec;
+
+    // Actually time the code
+    ros::WallTime start = ros::WallTime::now();
     finder.ExploreSurfaces(&indices_vec, &coeff_vec);
+    ros::WallTime end = ros::WallTime::now();
+    ros::WallDuration time_spent = end - start;
+    total_time += time_spent;
 
     if (indices_vec.size() < 3) {
       ROS_ERROR("Failed to find surfaces!");
@@ -182,14 +189,22 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
         *output_cloud += *part_cloud;
       }
 
-      ROS_INFO("Found %ld surfaces using %d iterations at %ldth attempt",
-               indices_vec.size(), min_iteration, iterations_ran_);
+      ROS_INFO(
+          "Found %ld surfaces using %d iterations, %f milliseconds, at %ldth "
+          "attempt",
+          indices_vec.size(), min_iteration, time_spent.toNSec() / 1000000.0,
+          iterations_ran_);
 
       pcl::toROSMsg(*output_cloud, msg_out);
       output_pub_.publish(msg_out);
     }
   }
   is_done_ = true;
+
+  ROS_INFO(
+      "The test finishes with the failure rate of %f, average time spent %f "
+      "milliseconds",
+      get_failure_rate(), total_time.toNSec() / 1000.0 / 1000000.0);
 }
 
 int main(int argc, char** argv) {
@@ -212,6 +227,4 @@ int main(int argc, char** argv) {
   while (!experiment.get_is_done() && ros::ok()) {
     ros::spinOnce();
   }
-  ROS_INFO("The test finishes with the failure rate of %f",
-           experiment.get_failure_rate());
 }
