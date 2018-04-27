@@ -3,7 +3,7 @@
 
 #include "Eigen/Eigen"
 #include "pcl/common/common.h"
-#include "pcl/filters/crop_box.h"
+#include "pcl/common/transforms.h"
 #include "pcl/filters/extract_indices.h"
 #include "pcl_conversions/pcl_conversions.h"
 #include "ros/ros.h"
@@ -12,37 +12,8 @@
 #include "tf/transform_listener.h"
 #include "tf_conversions/tf_eigen.h"
 
-#include "pcl/sample_consensus/method_types.h"
-#include "pcl/sample_consensus/model_types.h"
-#include "pcl/segmentation/sac_segmentation.h"
-
-namespace {
-void SetupROSParams() {
-  if (!ros::param::has("crop_min_x")) {
-    ros::param::set("crop_min_x", 0.0);
-  }
-  if (!ros::param::has("crop_min_y")) {
-    ros::param::set("crop_min_y", -0.5);
-  }
-  if (!ros::param::has("crop_min_z")) {
-    ros::param::set("crop_min_z", 0.05);
-  }
-  if (!ros::param::has("crop_max_x")) {
-    ros::param::set("crop_max_x", 1.3);
-  }
-  if (!ros::param::has("crop_max_y")) {
-    ros::param::set("crop_max_y", 0.5);
-  }
-  if (!ros::param::has("crop_max_z")) {
-    ros::param::set("crop_max_z", 2.0);
-  }
-  if (!ros::param::has("max_point_distance")) {
-    ros::param::set("max_point_distance", 0.015);
-  }
-
-  return;
-}
-}  // Anonymous namespace
+#include "perception_experiment/exp_algorithm.h"
+#include "perception_experiment/ransac_algorithm.h"
 
 class Experiment {
  public:
@@ -104,77 +75,56 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     pcl_cloud = pcl_cloud_raw;
   }
 
-  std::vector<int> indices;
-  pcl::removeNaNFromPointCloud(*pcl_cloud, *pcl_cloud, indices);
+  perception_experiment::RANSACAlgorithm algo;
+  algo.SetInputCloud(pcl_cloud);
+  algo.SetParameters();
 
-  pcl::PointIndices::Ptr point_indices(new pcl::PointIndices);
   PointCloudC::Ptr cropped_cloud(new PointCloudC);
   sensor_msgs::PointCloud2 msg_out;
 
-  pcl::CropBox<PointC> crop;
-  crop.setInputCloud(pcl_cloud);
-
-  SetupROSParams();
-
-  double max_x, max_y, max_z, min_x, min_y, min_z;
-  ros::param::param("crop_min_x", min_x, 0.0);
-  ros::param::param("crop_min_y", min_y, -0.5);
-  ros::param::param("crop_min_z", min_z, 0.05);
-  ros::param::param("crop_max_x", max_x, 1.3);
-  ros::param::param("crop_max_y", max_y, 0.5);
-  ros::param::param("crop_max_z", max_z, 2.0);
-
-  Eigen::Vector4f min;
-  min << min_x, min_y, min_z, 1;
-  crop.setMin(min);
-  Eigen::Vector4f max;
-  max << max_x, max_y, max_z, 1;
-  crop.setMax(max);
-  crop.filter(point_indices->indices);
-  crop.filter(*cropped_cloud);
-
+  algo.GetInputCloud(cropped_cloud);
   pcl::toROSMsg(*cropped_cloud, msg_out);
   input_pub_.publish(msg_out);
 
-  double max_point_distance;
-  ros::param::param("max_point_distance", max_point_distance, 0.015);
-  pcl::SACSegmentation<PointC> seg;
-  seg.setInputCloud(pcl_cloud);
-  seg.setIndices(point_indices);
-  seg.setModelType(pcl::SACMODEL_PLANE);
-  seg.setMethodType(pcl::SAC_RANSAC);
-  seg.setDistanceThreshold(max_point_distance);
-
+  ros::WallDuration total_time = ros::WallDuration();
   while (iterations_ran_ < iteration_limit_ && ros::ok()) {
     iterations_ran_++;
+    std::vector<PointCloudC::Ptr> cloud_vec;
+    ros::WallDuration time_spent;
+    algo.RunAlgorithm(&cloud_vec, &time_spent);
+    total_time += time_spent;
 
-    pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients);
-    pcl::PointIndices::Ptr indices(new pcl::PointIndices);
-    seg.segment(*indices, *coeff);
-
-    if (indices->indices.size() == 0) {
+    if (cloud_vec.size() < 3) {
       ROS_ERROR("Failed to find surfaces!");
       failure_times_++;
-    } else {
-      PointCloudC::Ptr output_cloud(new PointCloudC);
-      output_cloud->header.frame_id = target_frame_;
-
-      pcl::ExtractIndices<PointC> extract_indices;
-      extract_indices.setInputCloud(pcl_cloud);
-      extract_indices.setIndices(indices);
-      extract_indices.filter(*output_cloud);
-
-      ROS_INFO("Found 1 surface using at %ldth attempt", iterations_ran_);
-
-      pcl::toROSMsg(*output_cloud, msg_out);
-      output_pub_.publish(msg_out);
     }
+
+    PointCloudC::Ptr output_cloud(new PointCloudC);
+    output_cloud->header.frame_id = target_frame_;
+
+    for (size_t i = 0; i < cloud_vec.size(); i++) {
+      *output_cloud += *(cloud_vec[i]);
+    }
+
+    ROS_INFO(
+        "Found %ld surfaces using %f milliseconds at %ldth "
+        "attempt",
+        cloud_vec.size(), time_spent.toNSec() / 1000000.0,
+        iterations_ran_);
+
+    pcl::toROSMsg(*output_cloud, msg_out);
+    output_pub_.publish(msg_out);
   }
   is_done_ = true;
+
+  ROS_INFO(
+      "The test finishes with the failure rate of %f, average time spent %f "
+      "milliseconds",
+      get_failure_rate(), total_time.toNSec() / 1000.0 / 1000000.0);
 }
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "surface_perception_experiment");
+  ros::init(argc, argv, "surface_perception_experiment_test_ransac_algorithm");
   ros::NodeHandle nh;
   ros::Publisher input_pub =
       nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 100, true);
@@ -193,6 +143,4 @@ int main(int argc, char** argv) {
   while (!experiment.get_is_done() && ros::ok()) {
     ros::spinOnce();
   }
-  ROS_INFO("The test finishes with the failure rate of %f",
-           experiment.get_failure_rate());
 }

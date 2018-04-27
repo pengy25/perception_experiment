@@ -13,7 +13,7 @@
 #include "tf_conversions/tf_eigen.h"
 
 #include "perception_experiment/exp_algorithm.h"
-#include "perception_experiment/new_algorithm.h"
+#include "perception_experiment/omps_algorithm.h"
 
 class Experiment {
  public:
@@ -75,7 +75,7 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     pcl_cloud = pcl_cloud_raw;
   }
 
-  perception_experiment::NewAlgorithm algo;
+  perception_experiment::OMPSAlgorithm algo;
   algo.SetInputCloud(pcl_cloud);
   algo.SetParameters();
 
@@ -94,14 +94,11 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     algo.RunAlgorithm(&cloud_vec, &time_spent);
     total_time += time_spent;
 
-    int min_iteration;
-    ros::param::get("min_iteration", min_iteration);
-
     if (cloud_vec.size() < 3) {
       ROS_ERROR("Failed to find surfaces!");
       failure_times_++;
     }
-    
+
     PointCloudC::Ptr output_cloud(new PointCloudC);
     output_cloud->header.frame_id = target_frame_;
 
@@ -110,9 +107,9 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     }
 
     ROS_INFO(
-        "Found %ld surfaces using %d iterations, %f milliseconds, at %ldth "
+        "Found %ld surfaces using %f milliseconds at %ldth "
         "attempt",
-        cloud_vec.size(), min_iteration, time_spent.toNSec() / 1000000.0,
+        cloud_vec.size(), time_spent.toNSec() / 1000000.0,
         iterations_ran_);
 
     pcl::toROSMsg(*output_cloud, msg_out);
@@ -127,7 +124,7 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
 }
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "surface_perception_experiment_test_new_algorithm");
+  ros::init(argc, argv, "surface_perception_experiment_test_omps_algorithm");
   ros::NodeHandle nh;
   ros::Publisher input_pub =
       nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 100, true);

@@ -162,21 +162,51 @@ include_directories(
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(perception_experiment_new_algorithm src/new_algorithm_main.cpp)
-set_target_properties(perception_experiment_new_algorithm PROPERTIES OUTPUT_NAME new_algorithm PREFIX "")
+add_library(perception_experiment_exp_algorithm src/exp_algorithm.cpp)
+add_dependencies(perception_experiment_exp_algorithm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_experiment_exp_algorithm
+  ${catkin_LIBRARIES}
+)
+
+add_library(perception_experiment_new_algorithm src/new_algorithm.cpp)
+add_dependencies(perception_experiment_new_algorithm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(perception_experiment_new_algorithm
+  perception_experiment_exp_algorithm
   ${catkin_LIBRARIES}
 )
 
-add_executable(perception_experiment_sac_segmentation src/sac_segmentation_main.cpp)
-set_target_properties(perception_experiment_sac_segmentation PROPERTIES OUTPUT_NAME sac_segmentation PREFIX "")
-target_link_libraries(perception_experiment_sac_segmentation
+add_library(perception_experiment_omps_algorithm src/omps_algorithm.cpp)
+add_dependencies(perception_experiment_omps_algorithm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_experiment_omps_algorithm
+  perception_experiment_exp_algorithm
   ${catkin_LIBRARIES}
 )
 
-add_executable(perception_experiment_omps src/omps_main.cpp)
-set_target_properties(perception_experiment_omps PROPERTIES OUTPUT_NAME omps PREFIX "")
-target_link_libraries(perception_experiment_omps
+add_library(perception_experiment_ransac_algorithm src/ransac_algorithm.cpp)
+add_dependencies(perception_experiment_ransac_algorithm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(perception_experiment_ransac_algorithm
+  perception_experiment_exp_algorithm
+  ${catkin_LIBRARIES}
+)
+
+add_executable(perception_experiment_test_new_algorithm src/new_algorithm_main.cpp)
+set_target_properties(perception_experiment_test_new_algorithm PROPERTIES OUTPUT_NAME test_new_algorithm PREFIX "")
+target_link_libraries(perception_experiment_test_new_algorithm
+  perception_experiment_new_algorithm
+  ${catkin_LIBRARIES}
+)
+
+add_executable(perception_experiment_test_ransac_algorithm src/ransac_algorithm_main.cpp)
+set_target_properties(perception_experiment_test_ransac_algorithm PROPERTIES OUTPUT_NAME test_ransac_algorithm PREFIX "")
+target_link_libraries(perception_experiment_test_ransac_algorithm
+  perception_experiment_ransac_algorithm
+  ${catkin_LIBRARIES}
+)
+
+add_executable(perception_experiment_test_omps src/omps_algorithm_main.cpp)
+set_target_properties(perception_experiment_test_omps PROPERTIES OUTPUT_NAME test_omps_algorithm PREFIX "")
+target_link_libraries(perception_experiment_test_omps
+  perception_experiment_omps_algorithm
   ${catkin_LIBRARIES}
 )
 
