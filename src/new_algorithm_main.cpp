@@ -97,11 +97,14 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     int min_iteration;
     ros::param::get("min_iteration", min_iteration);
 
-    if (cloud_vec.size() < 3) {
-      ROS_ERROR("Failed to find surfaces!");
+    int expected_surface_amount;
+    ros::param::param("expected_surface_amount", expected_surface_amount, 3);
+
+    if (cloud_vec.size() != expected_surface_amount) {
+      ROS_ERROR("Failed to find correct number of surfaces!");
       failure_times_++;
     }
-    
+
     PointCloudC::Ptr output_cloud(new PointCloudC);
     output_cloud->header.frame_id = target_frame_;
 

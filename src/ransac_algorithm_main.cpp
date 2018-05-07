@@ -94,8 +94,8 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     algo.RunAlgorithm(&cloud_vec, &time_spent);
     total_time += time_spent;
 
-    if (cloud_vec.size() < 3) {
-      ROS_ERROR("Failed to find surfaces!");
+    if (cloud_vec.size() != 1) {
+      ROS_ERROR("Failed to find a surface!");
       failure_times_++;
     }
 
