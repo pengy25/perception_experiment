@@ -196,29 +196,15 @@ target_link_libraries(perception_experiment_visualization
   ${catkin_LIBRARIES}
 )
 
-add_executable(perception_experiment_test_new_algorithm src/new_algorithm_main.cpp)
-set_target_properties(perception_experiment_test_new_algorithm PROPERTIES OUTPUT_NAME test_new_algorithm PREFIX "")
-target_link_libraries(perception_experiment_test_new_algorithm
+add_executable(perception_experiment_test_algorithm src/test_algorithm_main.cpp)
+set_target_properties(perception_experiment_test_algorithm PROPERTIES OUTPUT_NAME test_algorithm PREFIX "")
+target_link_libraries(perception_experiment_test_algorithm
   perception_experiment_new_algorithm
   perception_experiment_omps_algorithm
   perception_experiment_ransac_algorithm
   perception_experiment_visualization
   ${catkin_LIBRARIES}
 )
-
-#add_executable(perception_experiment_test_ransac_algorithm src/ransac_algorithm_main.cpp)
-#set_target_properties(perception_experiment_test_ransac_algorithm PROPERTIES OUTPUT_NAME test_ransac_algorithm PREFIX "")
-#target_link_libraries(perception_experiment_test_ransac_algorithm
-#  perception_experiment_ransac_algorithm
-#  ${catkin_LIBRARIES}
-#)
-#
-#add_executable(perception_experiment_test_omps src/omps_algorithm_main.cpp)
-#set_target_properties(perception_experiment_test_omps PROPERTIES OUTPUT_NAME test_omps_algorithm PREFIX "")
-#target_link_libraries(perception_experiment_test_omps
-#  perception_experiment_omps_algorithm
-#  ${catkin_LIBRARIES}
-#)
 
 #############
 ## Install ##

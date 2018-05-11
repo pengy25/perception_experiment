@@ -55,7 +55,9 @@ OMPSAlgorithm::OMPSAlgorithm()
       normal_(pcl::NormalEstimation<PointC, pcl::Normal>()),
       uncropped_cloud_(new PointCloudC),
       cropped_cloud_(new PointCloudC),
-      point_indices_(new pcl::PointIndices) {}
+      point_indices_(new pcl::PointIndices) {
+  ROS_INFO("Using OMPS");
+}
 
 void OMPSAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
   *uncropped_cloud_ = *input_cloud;

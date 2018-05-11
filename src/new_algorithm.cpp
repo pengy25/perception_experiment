@@ -49,7 +49,9 @@ namespace perception_experiment {
 NewAlgorithm::NewAlgorithm()
     : algo_(surface_perception::SurfaceFinder()),
       uncropped_cloud_(new PointCloudC),
-      cropped_cloud_(new PointCloudC) {}
+      cropped_cloud_(new PointCloudC) {
+  ROS_INFO("Using New");
+}
 
 void NewAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
   std::vector<int> indices;

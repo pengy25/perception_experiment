@@ -44,7 +44,9 @@ namespace perception_experiment {
 RANSACAlgorithm::RANSACAlgorithm()
     : algo_(pcl::SACSegmentation<PointC>()),
       uncropped_cloud_(new PointCloudC),
-      cropped_cloud_(new PointCloudC) {}
+      cropped_cloud_(new PointCloudC) {
+  ROS_INFO("Using RANSAC");
+}
 
 void RANSACAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
   std::vector<int> indices;

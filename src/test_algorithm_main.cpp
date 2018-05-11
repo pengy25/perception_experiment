@@ -22,7 +22,7 @@
 
 class Experiment {
  public:
-  Experiment(const std::string& target_frame, const ros::Publisher& input_pub, const perception_experiment::SurfaceViz& viz);
+  Experiment(const std::string& algo_name, const std::string& target_frame, const ros::Publisher& input_pub, const perception_experiment::SurfaceViz& viz);
   void Callback(const sensor_msgs::PointCloud2ConstPtr& cloud);
   bool get_is_done();
   double get_failure_rate();
@@ -31,6 +31,7 @@ class Experiment {
   ros::Publisher input_pub_;
   perception_experiment::SurfaceViz viz_;
   std::string target_frame_;
+  std::string algo_name_;
   tf::TransformListener tf_listener_;
   size_t iterations_ran_;
   size_t failure_times_;
@@ -38,13 +39,15 @@ class Experiment {
   bool is_done_;
 };
 
-Experiment::Experiment(const std::string& target_frame,
+Experiment::Experiment(const std::string& algo_name,
+                       const std::string& target_frame,
                        const ros::Publisher& input_pub,
                        const perception_experiment::SurfaceViz& viz)
     : input_pub_(input_pub),
       target_frame_(target_frame),
+      algo_name_(algo_name),
       tf_listener_(),
-      iteration_limit_(1000),
+      iteration_limit_(10),
       iterations_ran_(0),
       failure_times_(0),
       is_done_(false),
@@ -79,14 +82,25 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     pcl_cloud = pcl_cloud_raw;
   }
 
-  perception_experiment::NewAlgorithm algo;
-  algo.SetInputCloud(pcl_cloud);
-  algo.SetParameters();
+  perception_experiment::ExpAlgorithm* algo;
+  if (algo_name_ == "new") {
+    algo = new perception_experiment::NewAlgorithm();
+  } else if (algo_name_ == "omps") {
+    algo = new perception_experiment::OMPSAlgorithm();
+  } else if (algo_name_ == "ransac") {
+    algo = new perception_experiment::RANSACAlgorithm();
+  } else {
+    ROS_ERROR("Not supported algo!");
+    return;
+  }
+
+  algo->SetInputCloud(pcl_cloud);
+  algo->SetParameters();
 
   PointCloudC::Ptr cropped_cloud(new PointCloudC);
   sensor_msgs::PointCloud2 msg_out;
 
-  algo.GetInputCloud(cropped_cloud);
+  algo->GetInputCloud(cropped_cloud);
   pcl::toROSMsg(*cropped_cloud, msg_out);
   input_pub_.publish(msg_out);
 
@@ -95,7 +109,7 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     iterations_ran_++;
     std::vector<surface_perception::Surface> surfaces;
     ros::WallDuration time_spent;
-    algo.RunAlgorithm(&surfaces, &time_spent);
+    algo->RunAlgorithm(&surfaces, &time_spent);
     total_time += time_spent;
 
     int min_iteration;
@@ -128,24 +142,29 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
       "The test finishes with the failure rate of %f, average time spent %f "
       "milliseconds",
       get_failure_rate(), total_time.toNSec() / 1000.0 / 1000000.0);
+
+  delete algo;
 }
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "surface_perception_experiment_test_new_algorithm");
+  ros::init(argc, argv, "surface_perception_experiment_test_algorithm");
   ros::NodeHandle nh;
   ros::Publisher input_pub =
       nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 100, true);
   ros::Publisher output_pub =
       nh.advertise<visualization_msgs::Marker>("detected_surface", 100, true);
 
-  std::string target_frame("base_link");
-  if (argc > 1) {
-    target_frame = argv[1];
+  if (argc != 2) {
+    ROS_ERROR("usage: rosrun run_algorithm algo");
+    return 1;
   }
+
+  std::string target_frame;
+  ros::param::param<std::string>("target_frame", target_frame, "base_link");
 
   perception_experiment::SurfaceViz viz(output_pub);
 
-  Experiment experiment(target_frame, input_pub, viz);
+  Experiment experiment(argv[1], target_frame, input_pub, viz);
   ros::Subscriber pc_sub = nh.subscribe<sensor_msgs::PointCloud2>(
       "cloud_in", 1, &Experiment::Callback, &experiment);
 
