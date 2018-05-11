@@ -5,9 +5,9 @@
 #include "pcl/filters/filter.h"
 #include "ros/ros.h"
 
+#include "surface_perception/shape_extraction.h"
 #include "surface_perception/surface.h"
 #include "surface_perception/surface_finder.h"
-#include "surface_perception/shape_extraction.h"
 
 namespace {
 void SetupROSParams() {
@@ -100,8 +100,9 @@ void NewAlgorithm::SetParameters() {
   algo_.set_min_iteration(min_iteration);
 }
 
-void NewAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
-                                ros::WallDuration* time_spent) {
+void NewAlgorithm::RunAlgorithm(
+    std::vector<surface_perception::Surface>* surfaces,
+    ros::WallDuration* time_spent) {
   std::vector<pcl::ModelCoefficients> coeff_vec;
   std::vector<pcl::PointIndices::Ptr> indices_vec;
 
@@ -116,7 +117,9 @@ void NewAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfac
     surface.coefficients.reset(new pcl::ModelCoefficients);
     surface.coefficients->values = coeff_vec[i].values;
     surface.pose_stamped.header.frame_id = uncropped_cloud_->header.frame_id;
-    if (surface_perception::FitBox(uncropped_cloud_, indices_vec[i], surface.coefficients, &surface.pose_stamped.pose, &surface.dimensions)) {
+    if (surface_perception::FitBox(
+            uncropped_cloud_, indices_vec[i], surface.coefficients,
+            &surface.pose_stamped.pose, &surface.dimensions)) {
       double offset = surface.coefficients->values[0] *
                           surface.pose_stamped.pose.position.x +
                       surface.coefficients->values[1] *

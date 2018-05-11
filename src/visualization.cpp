@@ -40,7 +40,8 @@ void SurfaceViz::Hide() {
   markers_.clear();
 }
 
-void SurfaceMarker(const surface_perception::Surface& surface, visualization_msgs::Marker* marker) {
+void SurfaceMarker(const surface_perception::Surface& surface,
+                   visualization_msgs::Marker* marker) {
   marker->type = Marker::CUBE;
   marker->header = surface.pose_stamped.header;
   marker->pose = surface.pose_stamped.pose;
@@ -62,12 +63,10 @@ void SurfaceMarkers(const std::vector<surface_perception::Surface>& surfaces,
 
     std::stringstream axes_ns;
     axes_ns << surface_marker.ns << surface_i << "_axes";
-    visualization_msgs::MarkerArray axesMarkers = surface_perception::GetAxesMarkerArray(
-        axes_ns.str(), surface_marker.header.frame_id,
-        surface_marker.pose,
-        std::min(surface_marker.scale.x,
-                 surface_marker.scale.y) /
-            2.0);
+    visualization_msgs::MarkerArray axesMarkers =
+        surface_perception::GetAxesMarkerArray(
+            axes_ns.str(), surface_marker.header.frame_id, surface_marker.pose,
+            std::min(surface_marker.scale.x, surface_marker.scale.y) / 2.0);
 
     for (size_t axis_i = 0; axis_i < axesMarkers.markers.size(); ++axis_i) {
       markers->push_back(axesMarkers.markers[axis_i]);

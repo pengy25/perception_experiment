@@ -4,13 +4,13 @@
 #include "pcl/filters/extract_indices.h"
 #include "ros/ros.h"
 
+#include "pcl/PointIndices.h"
 #include "pcl/features/normal_3d.h"
 #include "pcl/segmentation/organized_multi_plane_segmentation.h"
-#include "pcl/PointIndices.h"
 
-#include "surface_perception/surface_finder.h"
-#include "surface_perception/surface.h"
 #include "surface_perception/shape_extraction.h"
+#include "surface_perception/surface.h"
+#include "surface_perception/surface_finder.h"
 
 namespace {
 void SetupROSParams() {
@@ -51,7 +51,8 @@ void SetupROSParams() {
 
 namespace perception_experiment {
 OMPSAlgorithm::OMPSAlgorithm()
-    : algo_(pcl::OrganizedMultiPlaneSegmentation<PointC, pcl::Normal, pcl::Label>()),
+    : algo_(pcl::OrganizedMultiPlaneSegmentation<PointC, pcl::Normal,
+                                                 pcl::Label>()),
       normal_(pcl::NormalEstimation<PointC, pcl::Normal>()),
       uncropped_cloud_(new PointCloudC),
       cropped_cloud_(new PointCloudC),
@@ -105,15 +106,18 @@ void OMPSAlgorithm::SetParameters() {
   normal_.setRadiusSearch(search_radius);
 }
 
-void OMPSAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
-                                ros::WallDuration* time_spent) {
+void OMPSAlgorithm::RunAlgorithm(
+    std::vector<surface_perception::Surface>* surfaces,
+    ros::WallDuration* time_spent) {
   normal_.setInputCloud(uncropped_cloud_);
   pcl::search::KdTree<PointC>::Ptr kdtree(new pcl::search::KdTree<PointC>());
   normal_.setSearchMethod(kdtree);
-  pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(new pcl::PointCloud<pcl::Normal>);
+  pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(
+      new pcl::PointCloud<pcl::Normal>);
 
-
-  std::vector<pcl::PlanarRegion<PointC>, Eigen::aligned_allocator<pcl::PlanarRegion<PointC> > > regions;
+  std::vector<pcl::PlanarRegion<PointC>,
+              Eigen::aligned_allocator<pcl::PlanarRegion<PointC> > >
+      regions;
 
   // Actually time the code
   ros::WallTime start = ros::WallTime::now();
@@ -138,11 +142,13 @@ void OMPSAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfa
 
     pcl::PointIndices::Ptr indices(new pcl::PointIndices);
     for (size_t j = 0; j < point_indices_->indices.size(); j++) {
-      int index = point_indices_->indices[j];  // This is one index among the cropped indices
+      int index =
+          point_indices_
+              ->indices[j];  // This is one index among the cropped indices
       const PointC& pt = uncropped_cloud_->points[index];
       double dist =
-        fabs(model[0] * pt.x + model[1] * pt.y + model[2] * pt.z + model[3])
-        / sqrt(pow(model[0], 2) + pow(model[1], 2) + pow(model[2], 2));
+          fabs(model[0] * pt.x + model[1] * pt.y + model[2] * pt.z + model[3]) /
+          sqrt(pow(model[0], 2) + pow(model[1], 2) + pow(model[2], 2));
       if (dist < 0.01) {
         indices->indices.push_back(index);
       }
@@ -155,7 +161,9 @@ void OMPSAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfa
     surface.coefficients.reset(new pcl::ModelCoefficients);
     surface.coefficients->values = coeff_vec[i].values;
     surface.pose_stamped.header.frame_id = uncropped_cloud_->header.frame_id;
-    if (surface_perception::FitBox(uncropped_cloud_, indices_vec[i], surface.coefficients, &surface.pose_stamped.pose, &surface.dimensions)) {
+    if (surface_perception::FitBox(
+            uncropped_cloud_, indices_vec[i], surface.coefficients,
+            &surface.pose_stamped.pose, &surface.dimensions)) {
       double offset = surface.coefficients->values[0] *
                           surface.pose_stamped.pose.position.x +
                       surface.coefficients->values[1] *

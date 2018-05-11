@@ -43,7 +43,8 @@ class SurfaceViz {
 };
 
 /// Generates a marker for the given surface. Does not set the namespace or ID.
-void SurfaceMarker(const surface_perception::Surface& surface, visualization_msgs::Marker* marker);
+void SurfaceMarker(const surface_perception::Surface& surface,
+                   visualization_msgs::Marker* marker);
 
 /// Generates markers for the given surfaces. Sets namespaces and IDs like:
 /// First surface: ns=surface, id=0

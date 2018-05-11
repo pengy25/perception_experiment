@@ -5,8 +5,8 @@
 
 #include "pcl/PointIndices.h"
 #include "ros/ros.h"
-#include "surface_perception/typedefs.h"
 #include "surface_perception/surface.h"
+#include "surface_perception/typedefs.h"
 
 namespace perception_experiment {
 class ExpAlgorithm {

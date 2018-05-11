@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -17,24 +18,24 @@
 #include "perception_experiment/omps_algorithm.h"
 #include "perception_experiment/ransac_algorithm.h"
 
-#include "visualization_msgs/Marker.h"
 #include "perception_experiment/visualization.h"
+#include "visualization_msgs/Marker.h"
 
 class Experiment {
  public:
-  Experiment(const std::string& algo_name, const std::string& target_frame, const ros::Publisher& input_pub, const perception_experiment::SurfaceViz& viz);
+  Experiment(const std::string& algo_name, const std::string& target_frame,
+             const ros::Publisher& input_pub,
+             const perception_experiment::SurfaceViz& viz);
   void Callback(const sensor_msgs::PointCloud2ConstPtr& cloud);
   bool get_is_done();
-  double get_failure_rate();
 
  private:
+  std::string algo_name_;
+  std::string target_frame_;
   ros::Publisher input_pub_;
   perception_experiment::SurfaceViz viz_;
-  std::string target_frame_;
-  std::string algo_name_;
   tf::TransformListener tf_listener_;
   size_t iterations_ran_;
-  size_t failure_times_;
   size_t iteration_limit_;
   bool is_done_;
 };
@@ -43,25 +44,16 @@ Experiment::Experiment(const std::string& algo_name,
                        const std::string& target_frame,
                        const ros::Publisher& input_pub,
                        const perception_experiment::SurfaceViz& viz)
-    : input_pub_(input_pub),
+    : algo_name_(algo_name),
       target_frame_(target_frame),
-      algo_name_(algo_name),
+      input_pub_(input_pub),
+      viz_(viz),
       tf_listener_(),
       iteration_limit_(10),
       iterations_ran_(0),
-      failure_times_(0),
-      is_done_(false),
-      viz_(viz) {}
+      is_done_(false) {}
 
 bool Experiment::get_is_done() { return is_done_; }
-
-double Experiment::get_failure_rate() {
-  if (!is_done_) {
-    ROS_WARN("Warning: the experiment is not done yet.");
-    return 0.0;
-  }
-  return 1.0 * failure_times_ / iterations_ran_;
-}
 
 void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   PointCloudC::Ptr pcl_cloud_raw(new PointCloudC);
@@ -112,36 +104,35 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     algo->RunAlgorithm(&surfaces, &time_spent);
     total_time += time_spent;
 
-    int min_iteration;
-    ros::param::param("min_iteration", min_iteration, 1000);
-
-    int expected_surface_amount;
-    ros::param::param("expected_surface_amount", expected_surface_amount, 3);
-
-    if (surfaces.size() != expected_surface_amount) {
-      ROS_ERROR("Failed to find correct number of surfaces!");
-      failure_times_++;
+    if (algo_name_ == "new") {
+      int min_iteration;
+      ros::param::param("min_iteration", min_iteration, 1000);
+      ROS_INFO(
+          "%s algorithm found %ld surfaces using %d iterations, %f "
+          "milliseconds, at %ldth "
+          "attempt",
+          algo_name_.c_str(), surfaces.size(), min_iteration,
+          time_spent.toNSec() / 1000000.0, iterations_ran_);
+    } else {
+      ROS_INFO(
+          "%s algorithm found %ld surfaces using %f milliseconds, at %ldth "
+          "attempt",
+          algo_name_.c_str(), surfaces.size(), time_spent.toNSec() / 1000000.0,
+          iterations_ran_);
     }
-
-    PointCloudC::Ptr output_cloud(new PointCloudC);
-    output_cloud->header.frame_id = target_frame_;
-
-    ROS_INFO(
-        "Found %ld surfaces using %d iterations, %f milliseconds, at %ldth "
-        "attempt",
-        surfaces.size(), min_iteration, time_spent.toNSec() / 1000000.0,
-        iterations_ran_);
 
     viz_.Hide();
     viz_.set_surfaces(surfaces);
     viz_.Show();
+
+    std::cout << "Press enter to continue!" << std::endl;
+    std::string tmp;
+    std::getline(std::cin, tmp);
   }
   is_done_ = true;
 
-  ROS_INFO(
-      "The test finishes with the failure rate of %f, average time spent %f "
-      "milliseconds",
-      get_failure_rate(), total_time.toNSec() / 1000.0 / 1000000.0);
+  ROS_INFO("The test finishes with average time spent %f milliseconds",
+           total_time.toNSec() / iteration_limit_ / 1000000.0);
 
   delete algo;
 }

@@ -17,8 +17,9 @@ void ExpAlgorithm::SetParameters() {
   ROS_ERROR("You should override SetParameters!");
 }
 
-void ExpAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
-                                ros::WallDuration* time_spent) {
+void ExpAlgorithm::RunAlgorithm(
+    std::vector<surface_perception::Surface>* surfaces,
+    ros::WallDuration* time_spent) {
   ROS_ERROR("You should override RunAlgorithm!");
   return;
 }

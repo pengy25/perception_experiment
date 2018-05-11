@@ -9,8 +9,8 @@
 #include "pcl/sample_consensus/model_types.h"
 #include "pcl/segmentation/sac_segmentation.h"
 
-#include "surface_perception/surface.h"
 #include "surface_perception/shape_extraction.h"
+#include "surface_perception/surface.h"
 
 namespace {
 void SetupROSParams() {
@@ -92,8 +92,9 @@ void RANSACAlgorithm::SetParameters() {
   algo_.setDistanceThreshold(max_point_distance);
 }
 
-void RANSACAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
-                                ros::WallDuration* time_spent) {
+void RANSACAlgorithm::RunAlgorithm(
+    std::vector<surface_perception::Surface>* surfaces,
+    ros::WallDuration* time_spent) {
   pcl::ModelCoefficients::Ptr coeff(new pcl::ModelCoefficients);
   pcl::PointIndices::Ptr indices(new pcl::PointIndices);
 
@@ -107,14 +108,14 @@ void RANSACAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* sur
   surface.coefficients.reset(new pcl::ModelCoefficients);
   surface.coefficients->values = coeff->values;
   surface.pose_stamped.header.frame_id = uncropped_cloud_->header.frame_id;
-  if (surface_perception::FitBox(uncropped_cloud_, indices, surface.coefficients, &surface.pose_stamped.pose, &surface.dimensions)) {
-    double offset = surface.coefficients->values[0] *
-                        surface.pose_stamped.pose.position.x +
-                    surface.coefficients->values[1] *
-                        surface.pose_stamped.pose.position.y +
-                    surface.coefficients->values[2] *
-                        surface.pose_stamped.pose.position.z +
-                    surface.coefficients->values[3];
+  if (surface_perception::FitBox(
+          uncropped_cloud_, indices, surface.coefficients,
+          &surface.pose_stamped.pose, &surface.dimensions)) {
+    double offset =
+        surface.coefficients->values[0] * surface.pose_stamped.pose.position.x +
+        surface.coefficients->values[1] * surface.pose_stamped.pose.position.y +
+        surface.coefficients->values[2] * surface.pose_stamped.pose.position.z +
+        surface.coefficients->values[3];
     surface.pose_stamped.pose.position.z -= offset;
     surfaces->push_back(surface);
   }
