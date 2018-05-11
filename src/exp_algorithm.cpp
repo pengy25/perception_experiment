@@ -4,6 +4,8 @@
 #include "ros/ros.h"
 #include "surface_perception/typedefs.h"
 
+#include "surface_perception/surface.h"
+
 namespace perception_experiment {
 ExpAlgorithm::ExpAlgorithm() {}
 
@@ -15,7 +17,7 @@ void ExpAlgorithm::SetParameters() {
   ROS_ERROR("You should override SetParameters!");
 }
 
-void ExpAlgorithm::RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
+void ExpAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
                                 ros::WallDuration* time_spent) {
   ROS_ERROR("You should override RunAlgorithm!");
   return;

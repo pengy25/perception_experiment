@@ -6,6 +6,7 @@
 #include "pcl/PointIndices.h"
 #include "ros/ros.h"
 #include "surface_perception/typedefs.h"
+#include "surface_perception/surface.h"
 
 namespace perception_experiment {
 class ExpAlgorithm {
@@ -13,7 +14,7 @@ class ExpAlgorithm {
   ExpAlgorithm();
   virtual void SetInputCloud(PointCloudC::Ptr input_cloud);
   virtual void SetParameters();
-  virtual void RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
+  virtual void RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
                             ros::WallDuration* time_spent);
   virtual void GetInputCloud(PointCloudC::Ptr input_cloud);
 };

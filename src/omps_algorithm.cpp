@@ -9,6 +9,8 @@
 #include "pcl/PointIndices.h"
 
 #include "surface_perception/surface_finder.h"
+#include "surface_perception/surface.h"
+#include "surface_perception/shape_extraction.h"
 
 namespace {
 void SetupROSParams() {
@@ -101,7 +103,7 @@ void OMPSAlgorithm::SetParameters() {
   normal_.setRadiusSearch(search_radius);
 }
 
-void OMPSAlgorithm::RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
+void OMPSAlgorithm::RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
                                 ros::WallDuration* time_spent) {
   normal_.setInputCloud(uncropped_cloud_);
   pcl::search::KdTree<PointC>::Ptr kdtree(new pcl::search::KdTree<PointC>());
@@ -119,9 +121,18 @@ void OMPSAlgorithm::RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
   ros::WallTime end = ros::WallTime::now();
   *time_spent = end - start;
 
+  std::vector<pcl::ModelCoefficients> coeff_vec;
+  std::vector<pcl::PointIndices::Ptr> indices_vec;
+
   for (size_t i = 0; i < regions.size(); i++) {
     Eigen::Vector4f model = regions[i].getCoefficients();
-    PointCloudC::Ptr part_cloud(new PointCloudC);
+    pcl::ModelCoefficients coeff;
+    coeff.values.resize(4);
+    coeff.values[0] = model(0);
+    coeff.values[1] = model(1);
+    coeff.values[2] = model(2);
+    coeff.values[3] = model(3);
+    coeff_vec.push_back(coeff);
 
     pcl::PointIndices::Ptr indices(new pcl::PointIndices);
     for (size_t j = 0; j < point_indices_->indices.size(); j++) {
@@ -134,14 +145,25 @@ void OMPSAlgorithm::RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
         indices->indices.push_back(index);
       }
     }
+    indices_vec.push_back(indices);
+  }
 
-    pcl::ExtractIndices<PointC> extract_indices;
-    extract_indices.setInputCloud(uncropped_cloud_);
-    extract_indices.setIndices(indices);
-    extract_indices.filter(*part_cloud);
-
-    part_cloud->header.frame_id = uncropped_cloud_->header.frame_id;
-    cloud_vec->push_back(part_cloud);
+  for (size_t i = 0; i < indices_vec.size(); i++) {
+    surface_perception::Surface surface;
+    surface.coefficients.reset(new pcl::ModelCoefficients);
+    surface.coefficients->values = coeff_vec[i].values;
+    surface.pose_stamped.header.frame_id = uncropped_cloud_->header.frame_id;
+    if (surface_perception::FitBox(uncropped_cloud_, indices_vec[i], surface.coefficients, &surface.pose_stamped.pose, &surface.dimensions)) {
+      double offset = surface.coefficients->values[0] *
+                          surface.pose_stamped.pose.position.x +
+                      surface.coefficients->values[1] *
+                          surface.pose_stamped.pose.position.y +
+                      surface.coefficients->values[2] *
+                          surface.pose_stamped.pose.position.z +
+                      surface.coefficients->values[3];
+      surface.pose_stamped.pose.position.z -= offset;
+      surfaces->push_back(surface);
+    }
   }
 }
 

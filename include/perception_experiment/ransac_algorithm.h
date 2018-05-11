@@ -7,6 +7,7 @@
 #include "surface_perception/typedefs.h"
 
 #include "pcl/segmentation/sac_segmentation.h"
+#include "surface_perception/surface.h"
 
 namespace perception_experiment {
 class RANSACAlgorithm : public ExpAlgorithm {
@@ -14,7 +15,7 @@ class RANSACAlgorithm : public ExpAlgorithm {
   RANSACAlgorithm();
   void SetInputCloud(PointCloudC::Ptr input_cloud);
   void SetParameters();
-  void RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
+  void RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
                     ros::WallDuration* time_spent);
   void GetInputCloud(PointCloudC::Ptr input_cloud);
 

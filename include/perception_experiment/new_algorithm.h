@@ -6,13 +6,15 @@
 #include "surface_perception/surface_finder.h"
 #include "surface_perception/typedefs.h"
 
+#include "surface_perception/surface.h"
+
 namespace perception_experiment {
 class NewAlgorithm : public ExpAlgorithm {
  public:
   NewAlgorithm();
   void SetInputCloud(PointCloudC::Ptr input_cloud);
   void SetParameters();
-  void RunAlgorithm(std::vector<PointCloudC::Ptr>* cloud_vec,
+  void RunAlgorithm(std::vector<surface_perception::Surface>* surfaces,
                     ros::WallDuration* time_spent);
   void GetInputCloud(PointCloudC::Ptr input_cloud);
 

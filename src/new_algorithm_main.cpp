@@ -14,18 +14,22 @@
 
 #include "perception_experiment/exp_algorithm.h"
 #include "perception_experiment/new_algorithm.h"
+#include "perception_experiment/omps_algorithm.h"
+#include "perception_experiment/ransac_algorithm.h"
+
+#include "visualization_msgs/Marker.h"
+#include "perception_experiment/visualization.h"
 
 class Experiment {
  public:
-  Experiment(const std::string& target_frame, const ros::Publisher& input_pub,
-             const ros::Publisher& output_pub);
+  Experiment(const std::string& target_frame, const ros::Publisher& input_pub, const perception_experiment::SurfaceViz& viz);
   void Callback(const sensor_msgs::PointCloud2ConstPtr& cloud);
   bool get_is_done();
   double get_failure_rate();
 
  private:
   ros::Publisher input_pub_;
-  ros::Publisher output_pub_;
+  perception_experiment::SurfaceViz viz_;
   std::string target_frame_;
   tf::TransformListener tf_listener_;
   size_t iterations_ran_;
@@ -36,15 +40,15 @@ class Experiment {
 
 Experiment::Experiment(const std::string& target_frame,
                        const ros::Publisher& input_pub,
-                       const ros::Publisher& output_pub)
+                       const perception_experiment::SurfaceViz& viz)
     : input_pub_(input_pub),
-      output_pub_(output_pub),
       target_frame_(target_frame),
       tf_listener_(),
       iteration_limit_(1000),
       iterations_ran_(0),
       failure_times_(0),
-      is_done_(false) {}
+      is_done_(false),
+      viz_(viz) {}
 
 bool Experiment::get_is_done() { return is_done_; }
 
@@ -89,18 +93,18 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
   ros::WallDuration total_time = ros::WallDuration();
   while (iterations_ran_ < iteration_limit_ && ros::ok()) {
     iterations_ran_++;
-    std::vector<PointCloudC::Ptr> cloud_vec;
+    std::vector<surface_perception::Surface> surfaces;
     ros::WallDuration time_spent;
-    algo.RunAlgorithm(&cloud_vec, &time_spent);
+    algo.RunAlgorithm(&surfaces, &time_spent);
     total_time += time_spent;
 
     int min_iteration;
-    ros::param::get("min_iteration", min_iteration);
+    ros::param::param("min_iteration", min_iteration, 1000);
 
     int expected_surface_amount;
     ros::param::param("expected_surface_amount", expected_surface_amount, 3);
 
-    if (cloud_vec.size() != expected_surface_amount) {
+    if (surfaces.size() != expected_surface_amount) {
       ROS_ERROR("Failed to find correct number of surfaces!");
       failure_times_++;
     }
@@ -108,18 +112,15 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     PointCloudC::Ptr output_cloud(new PointCloudC);
     output_cloud->header.frame_id = target_frame_;
 
-    for (size_t i = 0; i < cloud_vec.size(); i++) {
-      *output_cloud += *(cloud_vec[i]);
-    }
-
     ROS_INFO(
         "Found %ld surfaces using %d iterations, %f milliseconds, at %ldth "
         "attempt",
-        cloud_vec.size(), min_iteration, time_spent.toNSec() / 1000000.0,
+        surfaces.size(), min_iteration, time_spent.toNSec() / 1000000.0,
         iterations_ran_);
 
-    pcl::toROSMsg(*output_cloud, msg_out);
-    output_pub_.publish(msg_out);
+    viz_.Hide();
+    viz_.set_surfaces(surfaces);
+    viz_.Show();
   }
   is_done_ = true;
 
@@ -135,14 +136,16 @@ int main(int argc, char** argv) {
   ros::Publisher input_pub =
       nh.advertise<sensor_msgs::PointCloud2>("cropped_cloud", 100, true);
   ros::Publisher output_pub =
-      nh.advertise<sensor_msgs::PointCloud2>("detected_surface", 100, true);
+      nh.advertise<visualization_msgs::Marker>("detected_surface", 100, true);
 
   std::string target_frame("base_link");
   if (argc > 1) {
     target_frame = argv[1];
   }
 
-  Experiment experiment(target_frame, input_pub, output_pub);
+  perception_experiment::SurfaceViz viz(output_pub);
+
+  Experiment experiment(target_frame, input_pub, viz);
   ros::Subscriber pc_sub = nh.subscribe<sensor_msgs::PointCloud2>(
       "cloud_in", 1, &Experiment::Callback, &experiment);
 
