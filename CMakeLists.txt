@@ -183,13 +183,6 @@ target_link_libraries(perception_experiment_omps_algorithm
   ${catkin_LIBRARIES}
 )
 
-add_library(perception_experiment_ransac_algorithm src/ransac_algorithm.cpp)
-add_dependencies(perception_experiment_ransac_algorithm ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(perception_experiment_ransac_algorithm
-  perception_experiment_exp_algorithm
-  ${catkin_LIBRARIES}
-)
-
 add_library(perception_experiment_visualization src/visualization.cpp)
 add_dependencies(perception_experiment_visualization ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(perception_experiment_visualization
@@ -201,7 +194,6 @@ set_target_properties(perception_experiment_test_algorithm PROPERTIES OUTPUT_NAM
 target_link_libraries(perception_experiment_test_algorithm
   perception_experiment_new_algorithm
   perception_experiment_omps_algorithm
-  perception_experiment_ransac_algorithm
   perception_experiment_visualization
   ${catkin_LIBRARIES}
 )

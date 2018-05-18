@@ -16,7 +16,6 @@
 #include "perception_experiment/exp_algorithm.h"
 #include "perception_experiment/new_algorithm.h"
 #include "perception_experiment/omps_algorithm.h"
-#include "perception_experiment/ransac_algorithm.h"
 
 #include "perception_experiment/visualization.h"
 #include "visualization_msgs/Marker.h"
@@ -79,8 +78,6 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     algo = new perception_experiment::NewAlgorithm();
   } else if (algo_name_ == "omps") {
     algo = new perception_experiment::OMPSAlgorithm();
-  } else if (algo_name_ == "ransac") {
-    algo = new perception_experiment::RANSACAlgorithm();
   } else {
     ROS_ERROR("Not supported algo!");
     return;

@@ -1,5 +1,8 @@
 #include "perception_experiment/omps_algorithm.h"
 
+#include <limits>
+#include <set>
+
 #include "pcl/filters/crop_box.h"
 #include "pcl/filters/extract_indices.h"
 #include "ros/ros.h"
@@ -44,8 +47,35 @@ void SetupROSParams() {
   if (!ros::param::has("search_radius")) {
     ros::param::set("search_radius", 0.03);
   }
+  if (!ros::param::has("max_point_plane_distance_difference")) {
+    ros::param::set("max_point_plane_distance_difference", 0.03);
+  }
 
   return;
+}
+
+PointCloudC OrganizedCloudExtraction(const PointCloudC::Ptr& input_cloud,
+                                     const pcl::PointIndices::Ptr indices) {
+  PointCloudC output_cloud = *input_cloud;
+
+  std::set<int> pts;
+  for (size_t i = 0; i < indices->indices.size(); i++) {
+    pts.insert(indices->indices[i]);
+  }
+
+  for (int i = 0; i < input_cloud->points.size(); i++) {
+    std::set<int>::iterator iter = pts.find(i);
+    PointC pt = input_cloud->points[i];
+
+    if (iter == pts.end()) {
+      pt.x = std::numeric_limits<float>::quiet_NaN();
+      pt.y = std::numeric_limits<float>::quiet_NaN();
+      pt.z = std::numeric_limits<float>::quiet_NaN();
+    }
+    output_cloud.points[i] = pt;
+  }
+
+  return output_cloud;
 }
 }  // namespace
 
@@ -87,13 +117,16 @@ void OMPSAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
 
   algo_.setInputCloud(uncropped_cloud_);
   algo_.setIndices(point_indices_);
+
+  *uncropped_cloud_ =
+      OrganizedCloudExtraction(uncropped_cloud_, point_indices_);
 }
 
 void OMPSAlgorithm::SetParameters() {
   double angle_tolerance_degree;
   ros::param::param("angle_tolerance_degree", angle_tolerance_degree, 10.0);
-  double max_point_distance;
-  ros::param::param("max_point_distance", max_point_distance, 0.015);
+  double max_point_plane_distance_difference;
+  ros::param::param("max_point_plane_distance_difference", max_point_plane_distance_difference, 0.03);
   int surface_point_threshold;
   ros::param::param("surface_point_threshold", surface_point_threshold, 5000);
   double search_radius;
@@ -101,7 +134,7 @@ void OMPSAlgorithm::SetParameters() {
 
   algo_.setMinInliers(surface_point_threshold);
   algo_.setAngularThreshold(angle_tolerance_degree * 0.017453);
-  algo_.setDistanceThreshold(max_point_distance);
+  algo_.setDistanceThreshold(max_point_plane_distance_difference);
 
   normal_.setRadiusSearch(search_radius);
 }
@@ -130,6 +163,9 @@ void OMPSAlgorithm::RunAlgorithm(
   std::vector<pcl::ModelCoefficients> coeff_vec;
   std::vector<pcl::PointIndices::Ptr> indices_vec;
 
+  double max_point_distance;
+  ros::param::param("max_point_distance", max_point_distance, 0.015);
+
   for (size_t i = 0; i < regions.size(); i++) {
     Eigen::Vector4f model = regions[i].getCoefficients();
     pcl::ModelCoefficients coeff;
@@ -149,7 +185,7 @@ void OMPSAlgorithm::RunAlgorithm(
       double dist =
           fabs(model[0] * pt.x + model[1] * pt.y + model[2] * pt.z + model[3]) /
           sqrt(pow(model[0], 2) + pow(model[1], 2) + pow(model[2], 2));
-      if (dist < 0.01) {
+      if (dist < max_point_distance) {
         indices->indices.push_back(index);
       }
     }
