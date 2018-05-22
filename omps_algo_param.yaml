@@ -1,5 +1,5 @@
-/angle_tolerance_degree: 10.0
+/angle_tolerance_degree: 3.0
 /max_point_distance: 0.015
-/max_point_plane_distance_difference: 0.03
-/search_radius: 0.07
-/surface_point_threshold: 5000
+/max_point_plane_distance_difference: 0.02
+/search_radius: 0.03
+/surface_point_threshold: 1000

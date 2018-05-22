@@ -8,6 +8,7 @@
 #include "ros/ros.h"
 
 #include "pcl/PointIndices.h"
+#include "pcl/common/angles.h"
 #include "pcl/features/normal_3d.h"
 #include "pcl/segmentation/organized_multi_plane_segmentation.h"
 
@@ -126,14 +127,15 @@ void OMPSAlgorithm::SetParameters() {
   double angle_tolerance_degree;
   ros::param::param("angle_tolerance_degree", angle_tolerance_degree, 10.0);
   double max_point_plane_distance_difference;
-  ros::param::param("max_point_plane_distance_difference", max_point_plane_distance_difference, 0.03);
+  ros::param::param("max_point_plane_distance_difference",
+                    max_point_plane_distance_difference, 0.03);
   int surface_point_threshold;
   ros::param::param("surface_point_threshold", surface_point_threshold, 5000);
   double search_radius;
   ros::param::param("search_radius", search_radius, 0.03);
 
   algo_.setMinInliers(surface_point_threshold);
-  algo_.setAngularThreshold(angle_tolerance_degree * 0.017453);
+  algo_.setAngularThreshold(pcl::deg2rad(angle_tolerance_degree));
   algo_.setDistanceThreshold(max_point_plane_distance_difference);
 
   normal_.setRadiusSearch(search_radius);
@@ -200,14 +202,6 @@ void OMPSAlgorithm::RunAlgorithm(
     if (surface_perception::FitBox(
             uncropped_cloud_, indices_vec[i], surface.coefficients,
             &surface.pose_stamped.pose, &surface.dimensions)) {
-      double offset = surface.coefficients->values[0] *
-                          surface.pose_stamped.pose.position.x +
-                      surface.coefficients->values[1] *
-                          surface.pose_stamped.pose.position.y +
-                      surface.coefficients->values[2] *
-                          surface.pose_stamped.pose.position.z +
-                      surface.coefficients->values[3];
-      surface.pose_stamped.pose.position.z -= offset;
       surfaces->push_back(surface);
     }
   }
