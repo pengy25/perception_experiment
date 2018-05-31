@@ -157,10 +157,15 @@ void OMPSAlgorithm::RunAlgorithm(
   // Actually time the code
   ros::WallTime start = ros::WallTime::now();
   normal_.compute(*normal_cloud);
+  ros::WallTime normalEnd = ros::WallTime::now();
   algo_.setInputNormals(normal_cloud);
+  ros::WallTime setNormalEnd = ros::WallTime::now();
   algo_.segmentAndRefine(regions);
   ros::WallTime end = ros::WallTime::now();
   *time_spent = end - start;
+  ROS_INFO("%f ms spent on normal computation", (normalEnd - start).toNSec() / 1000000.0);
+  ROS_INFO("%f ms spent on set normal", (setNormalEnd - normalEnd).toNSec() / 1000000.0);
+  ROS_INFO("%f ms spent on OMPS", (end - setNormalEnd).toNSec() / 1000000.0);
 
   std::vector<pcl::ModelCoefficients> coeff_vec;
   std::vector<pcl::PointIndices::Ptr> indices_vec;
