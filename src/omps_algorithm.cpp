@@ -114,13 +114,12 @@ void OMPSAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
   max << max_x, max_y, max_z, 1;
   crop.setMax(max);
   crop.filter(point_indices_->indices);
-  crop.filter(*cropped_cloud_);
 
-  algo_.setInputCloud(uncropped_cloud_);
-  algo_.setIndices(point_indices_);
-
-  *uncropped_cloud_ =
+  *cropped_cloud_ =
       OrganizedCloudExtraction(uncropped_cloud_, point_indices_);
+
+  algo_.setInputCloud(cropped_cloud_);
+  algo_.setIndices(point_indices_);
 }
 
 void OMPSAlgorithm::SetParameters() {
@@ -205,7 +204,7 @@ void OMPSAlgorithm::RunAlgorithm(
     surface.coefficients->values = coeff_vec[i].values;
     surface.pose_stamped.header.frame_id = uncropped_cloud_->header.frame_id;
     if (surface_perception::FitBox(
-            uncropped_cloud_, indices_vec[i], surface.coefficients,
+            cropped_cloud_, indices_vec[i], surface.coefficients,
             &surface.pose_stamped.pose, &surface.dimensions)) {
       surfaces->push_back(surface);
     }
