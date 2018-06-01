@@ -117,7 +117,6 @@ void OMPSAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
 
   *cropped_cloud_ =
       OrganizedCloudExtraction(uncropped_cloud_, point_indices_);
-
   algo_.setInputCloud(cropped_cloud_);
   algo_.setIndices(point_indices_);
 }
