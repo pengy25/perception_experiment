@@ -1,4 +1,4 @@
 /angle_tolerance_degree: 10.0
 /max_point_distance: 0.01
-/min_iteration: 160
+/min_iteration: 300
 /surface_point_threshold: 8000
