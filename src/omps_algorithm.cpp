@@ -9,7 +9,7 @@
 
 #include "pcl/PointIndices.h"
 #include "pcl/common/angles.h"
-#include "pcl/features/normal_3d.h"
+#include "pcl/features/normal_3d_omp.h"
 #include "pcl/segmentation/organized_multi_plane_segmentation.h"
 
 #include "surface_perception/shape_extraction.h"
@@ -84,7 +84,7 @@ namespace perception_experiment {
 OMPSAlgorithm::OMPSAlgorithm()
     : algo_(pcl::OrganizedMultiPlaneSegmentation<PointC, pcl::Normal,
                                                  pcl::Label>()),
-      normal_(pcl::NormalEstimation<PointC, pcl::Normal>()),
+      normal_(pcl::NormalEstimationOMP<PointC, pcl::Normal>()),
       uncropped_cloud_(new PointCloudC),
       cropped_cloud_(new PointCloudC),
       point_indices_(new pcl::PointIndices) {
@@ -115,8 +115,7 @@ void OMPSAlgorithm::SetInputCloud(PointCloudC::Ptr input_cloud) {
   crop.setMax(max);
   crop.filter(point_indices_->indices);
 
-  *cropped_cloud_ =
-      OrganizedCloudExtraction(uncropped_cloud_, point_indices_);
+  *cropped_cloud_ = OrganizedCloudExtraction(uncropped_cloud_, point_indices_);
   algo_.setInputCloud(cropped_cloud_);
   algo_.setIndices(point_indices_);
 }
@@ -161,8 +160,10 @@ void OMPSAlgorithm::RunAlgorithm(
   algo_.segmentAndRefine(regions);
   ros::WallTime end = ros::WallTime::now();
   *time_spent = end - start;
-  ROS_INFO("%f ms spent on normal computation", (normalEnd - start).toNSec() / 1000000.0);
-  ROS_INFO("%f ms spent on set normal", (setNormalEnd - normalEnd).toNSec() / 1000000.0);
+  ROS_INFO("%f ms spent on normal computation",
+           (normalEnd - start).toNSec() / 1000000.0);
+  ROS_INFO("%f ms spent on set normal",
+           (setNormalEnd - normalEnd).toNSec() / 1000000.0);
   ROS_INFO("%f ms spent on OMPS", (end - setNormalEnd).toNSec() / 1000000.0);
 
   std::vector<pcl::ModelCoefficients> coeff_vec;

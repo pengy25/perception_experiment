@@ -2,7 +2,7 @@
 #define _PERCEPTION_EXPERIMENT_OMPS_ALGORITHM_
 
 #include "pcl/PointIndices.h"
-#include "pcl/features/normal_3d.h"
+#include "pcl/features/normal_3d_omp.h"
 #include "pcl/segmentation/organized_multi_plane_segmentation.h"
 #include "perception_experiment/exp_algorithm.h"
 
@@ -20,7 +20,7 @@ class OMPSAlgorithm : public ExpAlgorithm {
 
  private:
   pcl::OrganizedMultiPlaneSegmentation<PointC, pcl::Normal, pcl::Label> algo_;
-  pcl::NormalEstimation<PointC, pcl::Normal> normal_;
+  pcl::NormalEstimationOMP<PointC, pcl::Normal> normal_;
   PointCloudC::Ptr uncropped_cloud_;
   PointCloudC::Ptr cropped_cloud_;
   pcl::PointIndices::Ptr point_indices_;
