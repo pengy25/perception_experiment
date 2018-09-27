@@ -94,6 +94,14 @@ void NewAlgorithm::SetParameters() {
   int min_iteration;
   ros::param::param("min_iteration", min_iteration, 1000);
 
+  int max_surface_amount = 10;
+
+  surface_perception::EstimateParameters(
+      cropped_cloud_->points.size(), surface_point_threshold, 0.01,
+      &max_surface_amount, &min_iteration);
+
+  ros::param::set("min_iteration", min_iteration);
+
   algo_.set_angle_tolerance_degree(angle_tolerance_degree);
   algo_.set_surface_point_threshold(surface_point_threshold);
   algo_.set_max_point_distance(max_point_distance);
