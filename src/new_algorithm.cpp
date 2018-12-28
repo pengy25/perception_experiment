@@ -41,6 +41,12 @@ void SetupROSParams() {
   if (!ros::param::has("min_iteration")) {
     ros::param::set("min_iteration", 1000);
   }
+  if (!ros::param::has("max_surface_amount")) {
+    ros::param::set("max_surface_amount", 10);
+  }
+  if (!ros::param::has("failure_prob_threshold")) {
+    ros::param::set("failure_prob_threshold", 0.01);
+  }
   return;
 }
 }  // namespace
@@ -94,11 +100,19 @@ void NewAlgorithm::SetParameters() {
   int min_iteration;
   ros::param::param("min_iteration", min_iteration, 1000);
 
-  int max_surface_amount = 10;
+  int max_surface_amount;
+  ros::param::param("max_surface_amount", max_surface_amount, 10);
+
+  double failure_prob_threshold;
+  ros::param::param("failure_prob_threshold", failure_prob_threshold, 0.01);
 
   surface_perception::EstimateParameters(
-      cropped_cloud_->points.size(), surface_point_threshold, 0.30,
-      &max_surface_amount, &min_iteration);
+      cropped_cloud_->points.size(),
+      surface_point_threshold,
+      failure_prob_threshold,
+      &max_surface_amount,
+      &min_iteration
+    );
 
   ros::param::set("min_iteration", min_iteration);
 
