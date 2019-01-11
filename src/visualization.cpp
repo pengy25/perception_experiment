@@ -7,7 +7,13 @@
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 
+#include "sensor_msgs/PointCloud2.h"
+#include "pcl_conversions/pcl_conversions.h"
+
 #include "surface_perception/axes_marker.h"
+#include "surface_perception/typedefs.h"
+
+#include "rosbag/bag.h"
 
 using visualization_msgs::Marker;
 
@@ -38,6 +44,25 @@ void SurfaceViz::Hide() {
     marker_pub_.publish(marker);
   }
   markers_.clear();
+}
+
+void SurfaceViz::Save(PointCloudC::Ptr cloud) {
+  rosbag::Bag out_bag;
+
+  sensor_msgs::PointCloud2 cloud_msg;
+  pcl::toROSMsg(*cloud, cloud_msg);
+
+  out_bag.open("saved_exp_result.bag", rosbag::bagmode::Write);
+
+  visualization_msgs::MarkerArray marker_array;
+  for (size_t i = 0; i < markers_.size(); i++) {
+    marker_array.markers.push_back(markers_[i]);
+  }
+
+  out_bag.write("cloud", ros::Time::now(), cloud_msg);
+  out_bag.write("markers", ros::Time::now(), marker_array);
+
+  out_bag.close();
 }
 
 void SurfaceMarker(const surface_perception::Surface& surface,
