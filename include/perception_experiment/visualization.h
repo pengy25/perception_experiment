@@ -7,6 +7,7 @@
 #include "visualization_msgs/Marker.h"
 
 #include "surface_perception/surface.h"
+#include "surface_perception/typedefs.h"
 
 namespace perception_experiment {
 /// \brief A visualization for a surface.
@@ -35,6 +36,9 @@ class SurfaceViz {
 
   /// \brief Deletes the markers that were most recently published with Show().
   void Hide();
+
+  /// \brief Save the markers with the given cloud in a ros bag.
+  void Save(PointCloudC::Ptr cloud);
 
  private:
   ros::Publisher marker_pub_;
