@@ -120,8 +120,8 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
 
     viz_.Hide();
     viz_.set_surfaces(surfaces);
-    viz_.Save(cropped_cloud);
     viz_.Show();
+    viz_.Save(cropped_cloud);
 
     std::cout << "Press enter to continue!" << std::endl;
     std::string tmp;

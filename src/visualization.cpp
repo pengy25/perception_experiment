@@ -55,6 +55,7 @@ void SurfaceViz::Save(PointCloudC::Ptr cloud) {
   out_bag.open("saved_exp_result.bag", rosbag::bagmode::Write);
 
   visualization_msgs::MarkerArray marker_array;
+  ROS_INFO("Writing %ld markers in the scene", markers_.size());
   for (size_t i = 0; i < markers_.size(); i++) {
     marker_array.markers.push_back(markers_[i]);
   }
