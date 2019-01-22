@@ -99,6 +99,7 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     std::vector<surface_perception::Surface> surfaces;
     ros::WallDuration time_spent;
     algo->RunAlgorithm(&surfaces, &time_spent);
+    ros::param::set("time_algo_overall", time_spent.toNSec() / 1000000.0);
     total_time += time_spent;
 
     if (algo_name_ == "new") {
@@ -121,7 +122,7 @@ void Experiment::Callback(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     viz_.Hide();
     viz_.set_surfaces(surfaces);
     viz_.Show();
-    viz_.Save(cropped_cloud);
+    viz_.Save(algo_name_, iterations_ran_, cropped_cloud);
 
     std::cout << "Press enter to continue!" << std::endl;
     std::string tmp;

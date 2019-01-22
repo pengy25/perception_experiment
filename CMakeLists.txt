@@ -24,6 +24,10 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen REQUIRED)
 find_package(PCL REQUIRED)
 
+find_path(JSON_PARENT_DIR
+  json-c
+)
+
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -132,6 +136,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Eigen_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
+  ${JSON_PARENT_DIR}/json-c
 )
 
 ## Declare a C++ library
@@ -187,6 +192,7 @@ target_link_libraries(perception_experiment_omps_algorithm
 add_library(perception_experiment_visualization src/visualization.cpp)
 add_dependencies(perception_experiment_visualization ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(perception_experiment_visualization
+  json-c
   ${catkin_LIBRARIES}
 )
 

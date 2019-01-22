@@ -38,7 +38,8 @@ class SurfaceViz {
   void Hide();
 
   /// \brief Save the markers with the given cloud in a ros bag.
-  void Save(PointCloudC::Ptr cloud);
+  void Save(const std::string& algo_name, size_t current_iteration,
+            PointCloudC::Ptr cloud);
 
  private:
   ros::Publisher marker_pub_;

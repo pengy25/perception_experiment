@@ -162,9 +162,13 @@ void OMPSAlgorithm::RunAlgorithm(
   *time_spent = end - start;
   ROS_INFO("%f ms spent on normal computation",
            (normalEnd - start).toNSec() / 1000000.0);
+  ros::param::set("time_normal", (normalEnd - start).toNSec() / 1000000.0);
   ROS_INFO("%f ms spent on set normal",
            (setNormalEnd - normalEnd).toNSec() / 1000000.0);
+  ros::param::set("time_set_normal",
+                  (setNormalEnd - normalEnd).toNSec() / 1000000.0);
   ROS_INFO("%f ms spent on OMPS", (end - setNormalEnd).toNSec() / 1000000.0);
+  ros::param::set("time_omps_alone", (end - setNormalEnd).toNSec() / 1000000.0);
 
   std::vector<pcl::ModelCoefficients> coeff_vec;
   std::vector<pcl::PointIndices::Ptr> indices_vec;
